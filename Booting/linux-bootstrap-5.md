@@ -9,7 +9,7 @@ This is the fifth part of the `Kernel booting process` series. We saw transition
 Preparation before kernel decompression
 --------------------------------------------------------------------------------
 
-We stoped right before jump on 64-bit entry point - `startup_64` which located in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) source code file. As we saw a jump to the `startup_64` in the `startup_32`:
+We stoped right before jump on 64-bit entry point - `startup_64` which located in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) source code file. We already saw the jump to the `startup_64` in the `startup_32`:
 
 ```assembly
 	pushl	$__KERNEL_CS
@@ -38,7 +38,7 @@ ENTRY(startup_64)
 	movl	%eax, %gs
 ```
 
-in the start of `startup_64`. All segment registers besides `cs` points now to the `ds` which is `0x18` (if you don't understand why it is `0x18`, read the previous part).
+in the beginning of the `startup_64`. All segment registers besides `cs` points now to the `ds` which is `0x18` (if you don't understand why it is `0x18`, read the previous part).
 
 The next step is computation of difference between where kernel was compiled and where it was loaded:
 
@@ -317,7 +317,7 @@ struct mem_vector {
 
 The next step after we collected all unsafe memory regions in the `mem_avoid` array will be search of the random address which does not overlap with the unsafe regions with the `find_random_addr` function.
 
-First of all we can see allign of the output address in the `find_random_addr` function:
+First of all we can see align of the output address in the `find_random_addr` function:
 
 ```C
 minimum = ALIGN(minimum, CONFIG_PHYSICAL_ALIGN);
@@ -399,7 +399,7 @@ static unsigned long slots[CONFIG_RANDOMIZE_BASE_MAX_OFFSET /
 static unsigned long slot_max;
 ```
 
-After `process_e820_entry` will be executed, we will have array of the addressess which are safe for the decompressed kernel. Next we call `slots_fetch_random` function for getting random item from this array:
+After `process_e820_entry` will be executed, we will have array of the addresses which are safe for the decompressed kernel. Next we call `slots_fetch_random` function for getting random item from this array:
 
 ```C
 if (slot_max == 0)
@@ -418,7 +418,7 @@ After all these checks will see the familiar message:
 Decompressing Linux... 
 ```
 
-and call `decompress` function which will decompress the kernel. `decompress` function depends on what decompression algorithm was choosen during kernel compilartion:
+and call `decompress` function which will decompress the kernel. `decompress` function depends on what decompression algorithm was chosen during kernel compilartion:
 
 ```C
 #ifdef CONFIG_KERNEL_GZIP

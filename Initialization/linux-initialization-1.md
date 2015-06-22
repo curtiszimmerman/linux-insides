@@ -122,7 +122,7 @@ The first step before we started to setup identity paging, need to correct follo
 	addq	%rbp, level2_fixmap_pgt + (506*8)(%rip)
 ```
 
-Here we need to correct `early_level4_pgt` and other addresses because as I wrote above kernel can be runned not at the default `0x1000000` address. `rbp` register contains actuall address so we add to the `early_level4_pgt`, `level3_kernel_pgt` and  `level2_fixmap_pgt`. Let's try to understand what this labels means. First of all let's look on their definition:
+Here we need to correct `early_level4_pgt` and other addresses of the page table directories, because as I wrote above, kernel can be runned not at the default `0x1000000` address. `rbp` register contains actuall address so we add to the `early_level4_pgt`, `level3_kernel_pgt` and  `level2_fixmap_pgt`. Let's try to understand what this labels means. First of all let's look on their definition:
 
 ```assembly
 NEXT_PAGE(early_level4_pgt)
@@ -385,9 +385,9 @@ INIT_PER_CPU(gdt_page);
 
 As we got `init_per_cpu__gdt_page` in `INIT_PER_CPU_VAR` and `INIT_PER_CPU` macro from linker script will be expanded we will get offset from the `__per_cpu_load`. After this calculations, we will have correct base address of the new GDT.
 
-Generally per-CPU variables is a 2.6 kernel feature. You can understand what is it from it's name. When we create `per-CPU` variable, each CPU will have will have it's own copy of this variable. Here we creating `gdt_page` per-CPU variable. There are many advantages for variables of this type, like there are no locks, because each CPU works with it's own copy of variable and etc... So every core on multiprocessor will have it's own `GDT` table and every entry in the table will represent a memory segment which can be accessed from the thread which runned on the core. You can read in details about `per-CPU` variables in the [Theory/per-cpu](http://0xax.gitbooks.io/linux-insides/content/Theory/per-cpu.html) post.
+Generally per-CPU variables is a 2.6 kernel feature. You can understand what is it from it's name. When we create `per-CPU` variable, each CPU will have will have it's own copy of this variable. Here we creating `gdt_page` per-CPU variable. There are many advantages for variables of this type, like there are no locks, because each CPU works with it's own copy of variable and etc... So every core on multiprocessor will have it's own `GDT` table and every entry in the table will represent a memory segment which can be accessed from the thread which runned on the core. You can read in details about `per-CPU` variables in the [Theory/per-cpu](http://0xax.gitbooks.io/linux-insides/content/Concepts/per-cpu.html) post.
 
-As we loaded new Global Descriptor Table, we reload segments as we did it everytime:
+As we loaded new Global Descriptor Table, we reload segments as we did it every time:
 
 ```assembly
 	xorl %eax,%eax
