@@ -16,7 +16,7 @@ We have already heard of the word `interrupt` in several parts of this book. We 
 
 We will then continue to dig deeper into the details of `interrupts` and how the Linux kernel handles them.
 
-So..., First of all what is an interrupt? An interrupt is an `event` which is emitted by software or hardware when its needs the CPU's attention. For example, we press a button on the keyboard and what do we expect next? What should the operating system and computer do after this? To simplify matters assume that each peripheral device has an interrupt line to the CPU. A device can use it to signal an interrupt to the CPU. However interrupts are not signaled directly to the CPU. In the old machines there was a [PIC](http://en.wikipedia.org/wiki/Programmable_Interrupt_Controller) which is a chip responsible for sequentially processing multiple interrupt requests from multiple devices. In the new machines there is an [Advanced Programmable Interrupt Controller](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller) commonly known as - `APIC`. An `APIC` consists of two separate devices:
+So..., First of all what is an interrupt? An interrupt is an `event` which is raised by software or hardware when its needs the CPU's attention. For example, we press a button on the keyboard and what do we expect next? What should the operating system and computer do after this? To simplify matters assume that each peripheral device has an interrupt line to the CPU. A device can use it to signal an interrupt to the CPU. However interrupts are not signaled directly to the CPU. In the old machines there was a [PIC](http://en.wikipedia.org/wiki/Programmable_Interrupt_Controller) which is a chip responsible for sequentially processing multiple interrupt requests from multiple devices. In the new machines there is an [Advanced Programmable Interrupt Controller](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller) commonly known as - `APIC`. An `APIC` consists of two separate devices:
 
 * `Local APIC`
 * `I/O APIC`
@@ -25,13 +25,13 @@ The first - `Local APIC` is located on each CPU core. The local APIC is responsi
 
 The second - `I/O APIC` provides multi-processor interrupt management. It is used to distribute external interrupts among the CPU cores. More about the local and I/O APICs will be covered later in this chapter. As you can understand, interrupts can occur at any time. When an interrupt occurs, the  operating system must handle it immediately. But what does it mean `to handle an interrupt`? When an interrupt occurs, the  operating system must ensure the following steps:
 
-* The kernel must pause execution of the current process; (preempt current task)
+* The kernel must pause execution of the current process; (preempt current task);
 * The kernel must search for the handler of the interrupt and transfer control (execute interrupt handler);
-* After the interrupt handler completes execution, the interrupted process can resume execution;
+* After the interrupt handler completes execution, the interrupted process can resume execution.
 
 Of course there are numerous intricacies involved in this procedure of handling interrupts. But the above 3 steps form the basic skeleton of the procedure.
 
-Addresses of each of the interrupt handlers are maintained in a special location referred to as the - `Interrupt Descriptor Table` or `IDT`. The processor uses an unique number for recognizing the type of interruption or exception. This number is called - `vector number`. A vector number is an index in the `IDT`. There is limited amount of the vector numbers and it can be from `0` to `255`. You can note the following range-check upon the vector number within the Linux kernel source-code:
+Addresses of each of the interrupt handlers are maintained in a special location referred to as the - `Interrupt Descriptor Table` or `IDT`. The processor uses a unique number for recognizing the type of interruption or exception. This number is called - `vector number`. A vector number is an index in the `IDT`. There is limited amount of the vector numbers and it can be from `0` to `255`. You can note the following range-check upon the vector number within the Linux kernel source-code:
 
 ```C
 BUG_ON((unsigned)n > 0xFF);
@@ -227,7 +227,7 @@ And the last `Type` field describes the type of the `IDT` entry. There are three
 * Trap gate
 * Task gate
 
-The `IST` or `Interrupt Stack Table` is a new mechanism in the `x86_64`. It used as an alternative to the the legacy stack-switch mechanism. Previously The `x86` architecture provided a mechanism to automatically switch stack frames in response to an interrupt. The `IST` is a modified version of the `x86` Stack switching mode. This mechanism unconditionally switches stacks when it is enabled and can be enabled for any interrupt in the `IDT` entry related with the certain interrupt (we will soon see it). From this we can understand that `IST` is not necessary for all interrupts. Some interrupts can continue to use the legacy stack switching mode. The `IST` mechanism provides up to seven `IST` pointers in the [Task State Segment](http://en.wikipedia.org/wiki/Task_state_segment) or `TSS` which is the special structure which contains information about a process. The `TSS` is used for stack switching during the execution of an interrupt or exception handler in the Linux kernel. Each pointer is referenced by an interrupt gate from the `IDT`.
+The `IST` or `Interrupt Stack Table` is a new mechanism in the `x86_64`. It is used as an alternative to the the legacy stack-switch mechanism. Previously The `x86` architecture provided a mechanism to automatically switch stack frames in response to an interrupt. The `IST` is a modified version of the `x86` Stack switching mode. This mechanism unconditionally switches stacks when it is enabled and can be enabled for any interrupt in the `IDT` entry related with the certain interrupt (we will soon see it). From this we can understand that `IST` is not necessary for all interrupts. Some interrupts can continue to use the legacy stack switching mode. The `IST` mechanism provides up to seven `IST` pointers in the [Task State Segment](http://en.wikipedia.org/wiki/Task_state_segment) or `TSS` which is the special structure which contains information about a process. The `TSS` is used for stack switching during the execution of an interrupt or exception handler in the Linux kernel. Each pointer is referenced by an interrupt gate from the `IDT`.
 
 The `Interrupt Descriptor Table` represented by the array of the `gate_desc` structures:
 
@@ -274,7 +274,7 @@ Each active thread has a large stack in the Linux kernel for the `x86_64` archit
 #define THREAD_SIZE  (PAGE_SIZE << THREAD_SIZE_ORDER)
 ```
 
-The `PAGE_SIZE` is `4096`-bytes and the `THREAD_SIZE_ORDER` depends on the `KASAN_STACK_ORDER`. As we can see, the `KASAN_STACK` depends on the `CONFIG_KASAN` kernel configuration parameter and equal to the:
+The `PAGE_SIZE` is `4096`-bytes and the `THREAD_SIZE_ORDER` depends on the `KASAN_STACK_ORDER`. As we can see, the `KASAN_STACK` depends on the `CONFIG_KASAN` kernel configuration parameter and equals to the:
 
 ```C
 #ifdef CONFIG_KASAN
@@ -374,33 +374,7 @@ for_each_possible_cpu(cpu) {
 }
 ```
 
-Here we go over all the CPUs on-by-one and setup `irq_stack_ptr`. This turns out to be equal to the top of the interrupt stack minus `64`. Why `64`? If you remember, we set the stack canary in the beginning of the `start_kernel` function from the [init/main.c](https://github.com/torvalds/linux/blob/master/init/main.c) with the call of the `boot_init_stack_canary` function:
-
-```C
-static __always_inline void boot_init_stack_canary(void)
-{
-    u64 canary;
-    ...
-    ...
-    ...
-
-#ifdef CONFIG_X86_64
-    BUILD_BUG_ON(offsetof(union irq_stack_union, stack_canary) != 40);
-#endif
-    //
-    // getting canary value here
-    //
-
-    this_cpu_write(irq_stack_union.stack_canary, canary);
-    ...
-    ...
-    ...
-}
-```
-
-Note that `canary` is `64` bits value. That's why we need to subtract `64` from the size of the interrupt stack to avoid overlapping with the stack canary value. Initialization of the `irq_stack_union.gs_base` is in the `load_percpu_segment` function from the [arch/x86/kernel/cpu/common.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/cpu/common.c):
-
-TODO maybe more about the wrmsl
+Here we go over all the CPUs on-by-one and setup `irq_stack_ptr`. This turns out to be equal to the top of the interrupt stack minus `64`. Why `64`?TODO  [arch/x86/kernel/cpu/common.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/cpu/common.c) source code file is following:
 
 ```C
 void load_percpu_segment(int cpu)
@@ -425,9 +399,9 @@ and as we already know `gs` register points to the bottom of the interrupt stack
 	.quad	INIT_PER_CPU_VAR(irq_stack_union)
 ```
 
-Here we can see the `wrmsr` instruction which loads the data from `edx:eax` into the [Model specific register](http://en.wikipedia.org/wiki/Model-specific_register) pointed by the `ecx` register. In our case model specific register is `MSR_GS_BASE` which contains the base address of the memory segment pointed by the `gs` register. `edx:eax` point to the address of the `initial_gs` which is the base address of the our `irq_stack_union`.
+Here we can see the `wrmsr` instruction which loads the data from `edx:eax` into the [Model specific register](http://en.wikipedia.org/wiki/Model-specific_register) pointed by the `ecx` register. In our case model specific register is `MSR_GS_BASE` which contains the base address of the memory segment pointed by the `gs` register. `edx:eax` points to the address of the `initial_gs` which is the base address of our `irq_stack_union`.
 
-We already know that `x86_64` has a feature called `Interrupt Stack Table` or `IST` and this feature provides ability to switch to a new stack for events non-maskable interrupt, double fault and etc... There can be up to seven `IST` entries per-cpu. Some of them are:
+We already know that `x86_64` has a feature called `Interrupt Stack Table` or `IST` and this feature provides the ability to switch to a new stack for events non-maskable interrupt, double fault and etc... There can be up to seven `IST` entries per-cpu. Some of them are:
 
 * `DOUBLEFAULT_STACK`
 * `NMI_STACK`
@@ -505,14 +479,11 @@ If you will have any questions or suggestions write me a comment or ping me at [
 Links
 --------------------------------------------------------------------------------
 
+* [PIC](http://en.wikipedia.org/wiki/Programmable_Interrupt_Controller)
 * [Advanced Programmable Interrupt Controller](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller)
 * [protected mode](http://en.wikipedia.org/wiki/Protected_mode)
 * [long mode](http://en.wikipedia.org/wiki/Long_mode)
 * [kernel stacks](https://www.kernel.org/doc/Documentation/x86/x86_64/kernel-stacks)
-* [PIC](http://en.wikipedia.org/wiki/Programmable_Interrupt_Controller)
-* [Advanced Programmable Interrupt Controller](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller)
-* [long mode](http://en.wikipedia.org/wiki/Long_mode)
-* [protected mode](http://en.wikipedia.org/wiki/Protected_mode)
 * [Task State Segement](http://en.wikipedia.org/wiki/Task_state_segment)
 * [segmented memory model](http://en.wikipedia.org/wiki/Memory_segmentation)
 * [Model specific registers](http://en.wikipedia.org/wiki/Model-specific_register)
